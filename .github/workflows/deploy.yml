@@ -102,7 +102,7 @@ jobs:
           helm upgrade --install healthletic-backend ./helm/backend --set image.repository=${{ env.IMAGE_REPO }} --set image.tag=${{ steps.version.outputs.version }} --namespace default --wait
 
       # ---------------------- SMOKE TEST ----------------------
-      - name: Smoke test: wait for service
+      - name: Smoke test - wait for service
         run: |
           echo "Waiting for healthletic-backend service..."
           until kubectl get svc healthletic-backend; do
@@ -110,3 +110,4 @@ jobs:
             sleep 5
           done
           echo "Service is ready!"
+
