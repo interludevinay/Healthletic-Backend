@@ -1,0 +1,32 @@
+replicaCount: 1
+
+
+image:
+repository: youruser/healthletic-backend
+tag: "0.1.0"
+pullPolicy: IfNotPresent
+
+
+service:
+type: ClusterIP
+port: 80
+
+
+containerPort: 5000
+
+
+resources: {}
+
+
+livenessProbe:
+path: /health
+port: 5000
+initialDelaySeconds: 5
+periodSeconds: 10
+
+
+readinessProbe:
+path: /health
+port: 5000
+initialDelaySeconds: 2
+periodSeconds: 5
