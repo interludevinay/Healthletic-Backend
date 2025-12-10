@@ -1,15 +1,13 @@
 name: CI - Build → KIND → Helm deploy → Smoke tests
 
-# Trigger pipeline on push or PR to main branch
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
 
-# Environment variable: Docker image repository
 env:
-  IMAGE_REPO: ${{ secrets.IMAGE_REPO }}  # Example: vinay/healthletic-backend
+  IMAGE_REPO: ${{ secrets.IMAGE_REPO }}  # e.g., vinay/healthletic-backend
 
 jobs:
   build-push-deploy:
@@ -43,36 +41,36 @@ jobs:
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
           echo "version=$TAG" >> $GITHUB_OUTPUT
 
-      # ---------------------- DOCKER IMAGE BUILD ----------------------
+      # ---------------------- BUILD DOCKER IMAGE ----------------------
       - name: Build Docker image
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Building Docker image: $IMAGE"
           docker build -t $IMAGE .
 
-      # ---------------------- IMAGE SECURITY SCAN ----------------------
+      # ---------------------- SCAN IMAGE WITH TRIVY ----------------------
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@v0.24.0
         with:
           image-ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
-          format: table
+          format: 'table'
           exit-code: 1
-          vuln-type: os,library
+          vuln-type: 'os,library'
 
-      # ---------------------- PUSH IMAGE TO REGISTRY ----------------------
+      # ---------------------- PUSH IMAGE TO DOCKER HUB ----------------------
       - name: Push image to Docker Hub
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Pushing Docker image: $IMAGE"
           docker push $IMAGE
 
-      # ---------------------- CREATE KIND CLUSTER ----------------------
+      # ---------------------- SETUP KIND CLUSTER ----------------------
       - name: Setup kind cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
           version: v0.20.0
 
-      - name: Load Docker image into kind
+      - name: Load Docker image into KIND
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           kind load docker-image $IMAGE
@@ -99,8 +97,8 @@ jobs:
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Deploying Helm release with image: $IMAGE"
           helm upgrade --install healthletic-backend ./helm/backend \
-            --set image.repository=${{ env.IMAGE_REPO }} \
-            --set image.tag=${{ steps.version.outputs.version }} \
+            --set image.repository="${{ env.IMAGE_REPO }}" \
+            --set image.tag="${{ steps.version.outputs.version }}" \
             --namespace default \
             --wait
 
