@@ -2,7 +2,7 @@ replicaCount: 1
 
 
 image:
-repository: youruser/healthletic-backend
+repository: vinayinterlude/healthletic-backend
 tag: "0.1.0"
 pullPolicy: IfNotPresent
 
