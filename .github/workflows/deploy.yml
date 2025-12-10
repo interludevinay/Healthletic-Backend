@@ -97,8 +97,8 @@ jobs:
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Deploying Helm release with image: $IMAGE"
           helm upgrade --install healthletic-backend ./helm/backend \
-            --set image.repository="${{ env.IMAGE_REPO }}" \
-            --set image.tag="${{ steps.version.outputs.version }}" \
+            --set image.repository=${{ env.IMAGE_REPO }} \
+            --set image.tag=${{ steps.version.outputs.version }} \
             --namespace default \
             --wait
 
