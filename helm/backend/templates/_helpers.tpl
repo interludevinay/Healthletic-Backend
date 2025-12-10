@@ -1,4 +1,7 @@
-{{/* Generate the fullname of the chart */}}
+{{- define "backend.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "backend.fullname" -}}
-{{- printf "%s-%s" .Release.Name .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s" (include "backend.name" .) -}}
 {{- end -}}
