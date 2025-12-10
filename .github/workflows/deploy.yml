@@ -112,4 +112,21 @@ jobs:
             sleep 5
           done
           echo "Service is ready!"
+        
+      # ---------------------- DEBUG DEPLOYMENT ----------------------
+      - name: List all pods
+        run: |
+          echo "Listing all pods in default namespace..."
+          kubectl get pods -n default -o wide
+
+      - name: List all services
+        run: |
+          echo "Listing all services in default namespace..."
+          kubectl get svc -n default -o wide
+
+      - name: Get pod logs
+        run: |
+          POD_NAME=$(kubectl get pods -l app=backend -o jsonpath="{.items[0].metadata.name}")
+          echo "Logs from pod: $POD_NAME"
+          kubectl logs $POD_NAME
 
