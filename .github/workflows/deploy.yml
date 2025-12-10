@@ -105,8 +105,9 @@ jobs:
       # ---------------------- SMOKE TEST ----------------------
       - name: Smoke test - wait for service
         run: |
-          echo "Waiting for healthletic-backend service..."
-          until kubectl get svc healthletic-backend; do
+          SERVICE_NAME=$(helm get manifest healthletic-backend | grep 'kind: Service' -A 1 | grep 'name:' | awk '{print $2}')
+          echo "Waiting for service: $SERVICE_NAME"
+          until kubectl get svc $SERVICE_NAME; do
             echo "Service not ready yet, waiting 5s..."
             sleep 5
           done
