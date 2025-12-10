@@ -52,7 +52,7 @@ jobs:
 
       # ---------------------- SCAN IMAGE WITH TRIVY ----------------------
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@v0.24.0
+        uses: aquasecurity/trivy-action@v0.29.0
         with:
           image-ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
           format: table
