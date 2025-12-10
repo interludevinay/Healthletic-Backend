@@ -136,7 +136,7 @@ jobs:
           echo "Service not ready yet, waiting 5s..."
           sleep 5
         done
-        echo "Service is ready!""
+        echo "Service is ready!"
 
       # Hits the /health endpoint to verify API is running
       # Rolls back Helm release automatically if test fails
