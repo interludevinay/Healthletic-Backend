@@ -113,11 +113,13 @@ jobs:
         IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
         echo "Deploying Helm release with image: $IMAGE"
         
+        # Use relative path to Helm chart
         helm upgrade --install healthletic-backend ./helm/backend \
           --set image.repository=${{ env.IMAGE_REPO }} \
           --set image.tag=${{ steps.version.outputs.version }} \
           --namespace default \
           --wait
+
       # Deploys the Flask API to KIND cluster using Helm
       # --wait ensures the deployment completes before proceeding
 
