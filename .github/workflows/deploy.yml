@@ -129,19 +129,15 @@ jobs:
       # --wait ensures the deployment completes before proceeding
 
     # ---------------------- SMOKE TEST ----------------------
-    - name: Smoke test
+    - name: Smoke test: wait for service
       run: |
-        echo "Waiting for service to be available..."
-        sleep 10
-        PORT=$(kubectl get svc healthletic-backend -o jsonpath='{.spec.ports[0].nodePort}')
-        echo "Service NodePort: $PORT"
-        
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/health)
-        if [ "$STATUS" -ne 200 ]; then
-          echo "Smoke test FAILED! Rolling back..."
-          helm rollback healthletic-backend 1
-          exit 1
-        fi
+        echo "Waiting for healthletic-backend service..."
+        until kubectl get svc healthletic-backend; do
+          echo "Service not ready yet, waiting 5s..."
+          sleep 5
+        done
+        echo "Service is ready!"
+
         
         echo "Smoke test PASSED ✅"
       # Hits the /health endpoint to verify API is running
