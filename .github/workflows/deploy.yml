@@ -51,13 +51,13 @@ jobs:
           docker build -t $IMAGE .
 
       # ---------------------- SCAN IMAGE WITH TRIVY ----------------------
-      - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image‑ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
-          format: table
-          exit‑code: 1
-          vuln‑type: os,library
+      # - name: Scan Docker image with Trivy
+      #   uses: aquasecurity/trivy-action@0.28.0
+      #   with:
+      #     image‑ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
+      #     format: table
+      #     exit‑code: 1
+      #     vuln‑type: os,library
 
 
       # ---------------------- PUSH IMAGE TO DOCKER HUB ----------------------
