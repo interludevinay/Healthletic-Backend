@@ -1,4 +1,4 @@
-name: CI - Build → KIND → Helm deploy → Smoke tests
+name: CI Build KIND Helm deploy Smoke tests
 
 on:
   push:
@@ -16,39 +16,33 @@ jobs:
       contents: read
 
     steps:
-      # ---------------------- CHECKOUT ----------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # ---------------------- DOCKER BUILD ENV ----------------------
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ---------------------- LOGIN TO DOCKER HUB ----------------------
       - name: Log into Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ---------------------- SEMANTIC VERSIONING ----------------------
       - name: Get semantic version
         id: version
         run: |
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
           echo "version=$TAG" >> $GITHUB_OUTPUT
 
-      # ---------------------- BUILD DOCKER IMAGE ----------------------
       - name: Build Docker image
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Building Docker image: $IMAGE"
           docker build -t $IMAGE .
 
-      # ---------------------- SCAN IMAGE WITH TRIVY ----------------------
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@v0.24.0
         with:
@@ -57,14 +51,12 @@ jobs:
           exit-code: 1
           vuln-type: 'os,library'
 
-      # ---------------------- PUSH IMAGE TO DOCKER HUB ----------------------
       - name: Push image to Docker Hub
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Pushing Docker image: $IMAGE"
           docker push $IMAGE
 
-      # ---------------------- SETUP KIND CLUSTER ----------------------
       - name: Setup kind cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
@@ -75,7 +67,6 @@ jobs:
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           kind load docker-image $IMAGE
 
-      # ---------------------- INSTALL KUBECTL & HELM ----------------------
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -91,7 +82,6 @@ jobs:
           echo "Current directory: $(pwd)"
           ls -R ./helm/backend
 
-      # ---------------------- HELM DEPLOY ----------------------
       - name: Helm deploy
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
@@ -102,7 +92,6 @@ jobs:
             --namespace default \
             --wait
 
-      # ---------------------- SMOKE TEST ----------------------
       - name: Smoke test: wait for service
         run: |
           echo "Waiting for healthletic-backend service..."
