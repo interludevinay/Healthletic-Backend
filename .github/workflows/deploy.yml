@@ -15,7 +15,7 @@ jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read  # Permission to read repo content
+      contents: read
 
     steps:
       # ---------------------- CHECKOUT ----------------------
@@ -55,9 +55,9 @@ jobs:
         uses: aquasecurity/trivy-action@v0.24.0
         with:
           image-ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
-          format: 'table'
-          exit-code: '1'
-          vuln-type: 'os,library'
+          format: table
+          exit-code: 1
+          vuln-type: os,library
 
       # ---------------------- PUSH IMAGE TO REGISTRY ----------------------
       - name: Push image to Docker Hub
@@ -98,7 +98,6 @@ jobs:
         run: |
           IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
           echo "Deploying Helm release with image: $IMAGE"
-          
           helm upgrade --install healthletic-backend ./helm/backend \
             --set image.repository=${{ env.IMAGE_REPO }} \
             --set image.tag=${{ steps.version.outputs.version }} \
