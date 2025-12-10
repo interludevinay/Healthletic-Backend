@@ -49,6 +49,12 @@ jobs:
         echo "version=$TAG" >> $GITHUB_OUTPUT
       # Outputs: steps.version.outputs.version
 
+    - name: Debug Docker image
+      run: |
+        echo "IMAGE_REPO=${{ env.IMAGE_REPO }}"
+        echo "VERSION=${{ steps.version.outputs.version }}"
+        echo "IMAGE=${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+
     # ---------------------- DOCKER IMAGE BUILD ----------------------
     - name: Build Docker image
       run: |
