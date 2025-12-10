@@ -98,7 +98,7 @@ jobs:
     - name: Install kubectl
       uses: azure/setup-kubectl@v4
       with:
-        version: '1.30.0'
+        version: 'latest'
       # Installs kubectl to interact with Kubernetes
 
     - name: Install Helm
