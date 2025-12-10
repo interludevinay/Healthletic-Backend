@@ -9,7 +9,7 @@ on:
 
 # Environment variable: Docker image repository
 env:
-  IMAGE_REPO: ${{ secrets.IMAGE_REPO }}  # Example: yourdockerhubusername/healthletic-backend
+  IMAGE_REPO: ${{ secrets.IMAGE_REPO }}  # Example: vinay/healthletic-backend
 
 jobs:
   build-push-deploy:
@@ -18,125 +18,99 @@ jobs:
       contents: read  # Permission to read repo content
 
     steps:
-    # ---------------------- CHECKOUT ----------------------
-    - name: Checkout source code
-      uses: actions/checkout@v4
-      # This step pulls your repository code into the runner
+      # ---------------------- CHECKOUT ----------------------
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
-    # ---------------------- DOCKER BUILD ENV ----------------------
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      # QEMU allows building multi-architecture Docker images (optional)
+      # ---------------------- DOCKER BUILD ENV ----------------------
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      # Buildx is used to build Docker images efficiently
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    # ---------------------- LOGIN TO DOCKER HUB ----------------------
-    - name: Log into Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # Logs into Docker Hub to allow image push
+      # ---------------------- LOGIN TO DOCKER HUB ----------------------
+      - name: Log into Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # ---------------------- SEMANTIC VERSIONING ----------------------
-    - name: Get semantic version
-      id: version
-      run: |
-        # Get the latest git tag or fallback to 0.1.0
-        TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
-        echo "version=$TAG" >> $GITHUB_OUTPUT
-      # Outputs: steps.version.outputs.version
+      # ---------------------- SEMANTIC VERSIONING ----------------------
+      - name: Get semantic version
+        id: version
+        run: |
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
+          echo "version=$TAG" >> $GITHUB_OUTPUT
 
-    - name: Debug Docker image
-      run: |
-        echo "IMAGE_REPO=${{ env.IMAGE_REPO }}"
-        echo "VERSION=${{ steps.version.outputs.version }}"
-        echo "IMAGE=${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+      # ---------------------- DOCKER IMAGE BUILD ----------------------
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+          echo "Building Docker image: $IMAGE"
+          docker build -t $IMAGE .
 
-    # ---------------------- DOCKER IMAGE BUILD ----------------------
-    - name: Build Docker image
-      run: |
-        IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
-        echo "Building Docker image: $IMAGE"
-        docker build -t $IMAGE .
-      # Builds the Flask API Docker image with semantic version tag
+      # ---------------------- IMAGE SECURITY SCAN ----------------------
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
+          format: 'table'
+          exit-code: '1'
+          vuln-type: 'os,library'
 
-    # ---------------------- IMAGE SECURITY SCAN ----------------------
-    # - name: Scan image with Trivy
-    #   uses: aquasecurity/trivy-action@v0.11.2
-    #   with:
-    #     image-ref: ${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}
-    #     format: 'table'
-    #     exit-code: '1'
-    #     vuln-type: 'os,library'
-      # Security scan to detect vulnerabilities in the Docker image
+      # ---------------------- PUSH IMAGE TO REGISTRY ----------------------
+      - name: Push image to Docker Hub
+        run: |
+          IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+          echo "Pushing Docker image: $IMAGE"
+          docker push $IMAGE
 
-    # ---------------------- PUSH IMAGE TO REGISTRY ----------------------
-    - name: Push image to Docker Hub
-      run: |
-        IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
-        echo "Pushing Docker image: $IMAGE"
-        docker push $IMAGE
-      # Pushes the built Docker image to Docker Hub
+      # ---------------------- CREATE KIND CLUSTER ----------------------
+      - name: Setup kind cluster
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.20.0
 
-    # ---------------------- CREATE KIND CLUSTER ----------------------
-    - name: Setup kind cluster
-      uses: engineerd/setup-kind@v0.5.0
-      with:
-        version: v0.20.0
-      # Sets up an ephemeral Kubernetes cluster inside GitHub Actions runner
+      - name: Load Docker image into kind
+        run: |
+          IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+          kind load docker-image $IMAGE
 
-    - name: Load image into kind
-      run: |
-        IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
-        kind load docker-image $IMAGE
-      # Loads the pushed Docker image into KIND cluster for deployment
+      # ---------------------- INSTALL KUBECTL & HELM ----------------------
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
 
-    # ---------------------- INSTALL KUBECTL & HELM ----------------------
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v4
-      with:
-        version: 'latest'
-      # Installs kubectl to interact with Kubernetes
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0'
 
-    - name: Install Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: 'v3.12.0'
-      # Installs Helm to deploy charts
+      - name: List Helm chart directory
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -R ./helm/backend
 
-    - name: List Helm chart directory
-      run: |
-        echo "Current directory: $(pwd)"
-        ls -R ./helm/backend
+      # ---------------------- HELM DEPLOY ----------------------
+      - name: Helm deploy
+        run: |
+          IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
+          echo "Deploying Helm release with image: $IMAGE"
+          
+          helm upgrade --install healthletic-backend ./helm/backend \
+            --set image.repository=${{ env.IMAGE_REPO }} \
+            --set image.tag=${{ steps.version.outputs.version }} \
+            --namespace default \
+            --wait
 
-    # ---------------------- HELM DEPLOY ----------------------
-    - name: Helm deploy
-      run: |
-        IMAGE="${{ env.IMAGE_REPO }}:${{ steps.version.outputs.version }}"
-        echo "Deploying Helm release with image: $IMAGE"
-        
-        # Use relative path to Helm chart
-        helm upgrade --install healthletic-backend ./helm/backend \
-          --set image.repository=${{ env.IMAGE_REPO }} \
-          --set image.tag=${{ steps.version.outputs.version }} \
-          --namespace default \
-          --wait
-
-      # Deploys the Flask API to KIND cluster using Helm
-      # --wait ensures the deployment completes before proceeding
-
-    # ---------------------- SMOKE TEST ----------------------
-    - name: Smoke test: wait for service
-      run: |
-        echo "Waiting for healthletic-backend service..."
-        until kubectl get svc healthletic-backend; do
-          echo "Service not ready yet, waiting 5s..."
-          sleep 5
-        done
-        echo "Service is ready!"
-
-      # Hits the /health endpoint to verify API is running
-      # Rolls back Helm release automatically if test fails
+      # ---------------------- SMOKE TEST ----------------------
+      - name: Smoke test: wait for service
+        run: |
+          echo "Waiting for healthletic-backend service..."
+          until kubectl get svc healthletic-backend; do
+            echo "Service not ready yet, waiting 5s..."
+            sleep 5
+          done
+          echo "Service is ready!"
