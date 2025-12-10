@@ -107,6 +107,11 @@ jobs:
         version: 'v3.12.0'
       # Installs Helm to deploy charts
 
+    - name: List Helm chart directory
+      run: |
+        echo "Current directory: $(pwd)"
+        ls -R ./helm/backend
+
     # ---------------------- HELM DEPLOY ----------------------
     - name: Helm deploy
       run: |
